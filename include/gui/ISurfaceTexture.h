@@ -28,6 +28,10 @@
 #include <ui/GraphicBuffer.h>
 #include <ui/Rect.h>
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+#include <binder/IMemory.h>
+#endif
+
 namespace android {
 // ----------------------------------------------------------------------------
 
@@ -129,8 +133,14 @@ protected:
         uint32_t numPendingBuffers;
     };
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    virtual status_t queueBuffer(int slot,
+            const QueueBufferInput& input, QueueBufferOutput* output,
+            const sp<IMemory>& metadata) = 0;
+#else
     virtual status_t queueBuffer(int slot,
             const QueueBufferInput& input, QueueBufferOutput* output) = 0;
+#endif
 
     // cancelBuffer indicates that the client does not wish to fill in the
     // buffer associated with slot and transfers ownership of the slot back to
@@ -147,6 +157,14 @@ protected:
     // queued buffers will be retired in order.
     // The default mode is asynchronous.
     virtual status_t setSynchronousMode(bool enabled) = 0;
+
+#ifdef QCOM_HARDWARE
+   // setBufferSize enables to specify the user defined size of the buffer
+   // that needs to be allocated by surfaceflinger for its client. This is used
+   // for interlaced use cases where the user can pass extra information about
+   // the type of the frame whether it is interlaced or progressive frame.
+    virtual status_t setBuffersSize(int size) = 0;
+#endif
 
     // connect attempts to connect a client API to the SurfaceTexture.  This
     // must be called before any other ISurfaceTexture methods are called except
@@ -169,6 +187,20 @@ protected:
     // This method will fail if the the SurfaceTexture is not currently
     // connected to the specified client API.
     virtual status_t disconnect(int api) = 0;
+
+#ifdef OMAP_ENHANCEMENT
+    //method to set the buffer layout
+    virtual status_t setLayout(uint32_t layout) = 0;
+#endif
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    // updateAndGetCurrent gets the latest buffer and gives the ownership
+    // of the buffer to the client
+    virtual status_t updateAndGetCurrent(sp<GraphicBuffer>* buf) = 0;
+
+    // addBufferSlot() adds the provided buffer to the buffer slots array.
+    virtual int addBufferSlot(const sp<GraphicBuffer>& buffer) = 0;
+#endif
 };
 
 // ----------------------------------------------------------------------------

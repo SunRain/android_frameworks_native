@@ -509,6 +509,7 @@ void SurfaceFlinger::postFramebuffer()
         mVisibleLayersSortedByZ[i]->onLayerDisplayed();
     }
 
+
     mLastSwapBufferTime = systemTime() - now;
     mDebugInSwapBuffers = 0;
     mSwapRegion.clear();
@@ -575,7 +576,9 @@ void SurfaceFlinger::handleTransactionLocked(uint32_t transactionFlags)
             // Currently unused: const uint32_t flags = mCurrentState.orientationFlags;
             GraphicPlane& plane(graphicPlane(dpy));
             plane.setOrientation(orientation);
-
+#ifdef QCOMHW
+            const Transform& planeTransform(plane.transform());
+#endif
             // update the shared control block
             const DisplayHardware& hw(plane.displayHardware());
             volatile display_cblk_t* dcblk = mServerCblk->displays + dpy;
@@ -597,6 +600,13 @@ void SurfaceFlinger::handleTransactionLocked(uint32_t transactionFlags)
                 mHdmiClient->setHdmiRotate(90, overlayLayerCount);
             else
                 mHdmiClient->setHdmiRotate(0, overlayLayerCount);
+#endif
+#ifdef QCOMHW
+            //set the new orientation to HWC
+            HWComposer& hwc(graphicPlane(0).displayHardware().getHwComposer());
+            hwc.eventControl(DisplayHardware::EVENT_ORIENTATION,
+                                              planeTransform.getOrientation());
+
 #endif
         }
 
@@ -1843,6 +1853,18 @@ status_t SurfaceFlinger::renderScreenToTexture(DisplayID dpy,
     return renderScreenToTextureLocked(dpy, textureName, uOut, vOut);
 }
 
+#ifdef OMAP_ENHANCEMENT_S3D
+void SurfaceFlinger::drawLayersForScreenshotLocked()
+{
+    const Vector< sp<LayerBase> >& layers(mVisibleLayersSortedByZ);
+    const size_t count = layers.size();
+    for (size_t i=0 ; i<count ; ++i) {
+        const sp<LayerBase>& layer(layers[i]);
+        layer->drawForSreenShot();
+    }
+}
+#endif
+
 status_t SurfaceFlinger::renderScreenToTextureLocked(DisplayID dpy,
         GLuint* textureName, GLfloat* uOut, GLfloat* vOut)
 {
@@ -1890,13 +1912,16 @@ status_t SurfaceFlinger::renderScreenToTextureLocked(DisplayID dpy,
     glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+#ifdef OMAP_ENHANCEMENT_S3D
+    drawLayersForScreenshotLocked();
+#else
     const Vector< sp<LayerBase> >& layers(mVisibleLayersSortedByZ);
     const size_t count = layers.size();
     for (size_t i=0 ; i<count ; ++i) {
         const sp<LayerBase>& layer(layers[i]);
         layer->drawForSreenShot();
     }
-
+#endif
     hw.compositionComplete();
 
     // back to main framebuffer
@@ -2695,13 +2720,22 @@ status_t Client::destroySurface(SurfaceID sid) {
 
 // ---------------------------------------------------------------------------
 
-GraphicBufferAlloc::GraphicBufferAlloc() {}
+GraphicBufferAlloc::GraphicBufferAlloc() {
+#ifdef QCOM_HARDWARE
+    mBufferSize = 0;
+#endif
+}
 
 GraphicBufferAlloc::~GraphicBufferAlloc() {}
 
 sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h,
         PixelFormat format, uint32_t usage, status_t* error) {
-    sp<GraphicBuffer> graphicBuffer(new GraphicBuffer(w, h, format, usage));
+    sp<GraphicBuffer> graphicBuffer(new GraphicBuffer(w, h, format,
+                                                      usage
+#ifdef QCOM_HARDWARE
+                                                      ,mBufferSize
+#endif
+                                                      ));
     status_t err = graphicBuffer->initCheck();
     *error = err;
     if (err != 0 || graphicBuffer->handle == 0) {
@@ -2716,6 +2750,11 @@ sp<GraphicBuffer> GraphicBufferAlloc::createGraphicBuffer(uint32_t w, uint32_t h
     return graphicBuffer;
 }
 
+#ifdef QCOM_HARDWARE
+void GraphicBufferAlloc::setGraphicBufferSize(int size) {
+    mBufferSize = size;
+}
+#endif
 // ---------------------------------------------------------------------------
 
 GraphicPlane::GraphicPlane()

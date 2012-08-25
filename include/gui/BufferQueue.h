@@ -125,8 +125,14 @@ public:
     // nanoseconds, and must be monotonically increasing. Its other semantics
     // (zero point, etc) are client-dependent and should be documented by the
     // client.
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    virtual status_t queueBuffer(int buf,
+            const QueueBufferInput& input, QueueBufferOutput* output,
+            const sp<IMemory>& metadata);
+#else
     virtual status_t queueBuffer(int buf,
             const QueueBufferInput& input, QueueBufferOutput* output);
+#endif
 
     virtual void cancelBuffer(int buf);
 
@@ -136,6 +142,14 @@ public:
     // queued buffers will be retired in order.
     // The default mode is asynchronous.
     virtual status_t setSynchronousMode(bool enabled);
+
+#ifdef QCOM_HARDWARE
+    // setBufferSize enables to specify the user defined size of the buffer
+    // that needs to be allocated by surfaceflinger for its client. This is used
+    // for interlaced use cases where the user can pass extra information about
+    // the type of the frame whether it is interlaced or progressive frame.
+    virtual status_t setBuffersSize(int size);
+#endif
 
     // connect attempts to connect a producer client API to the BufferQueue.
     // This must be called before any other ISurfaceTexture methods are called
@@ -193,6 +207,17 @@ public:
 
         // mBuf is the slot index of this buffer
         int mBuf;
+
+#ifdef OMAP_ENHANCEMENT
+        // layout for the buffers
+        uint32_t mLayout;
+#endif
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        // mMetadata is a shared memory containing camera_metadata_t for this
+        // slot. Content of metadata may be different dependeing on usecase.
+        sp<IMemory> mMetadata;
+#endif
     };
 
     // The following public functions is the consumer facing interface
@@ -256,6 +281,11 @@ public:
 
     // setTransformHint bakes in rotation to buffers so overlays can be used
     status_t setTransformHint(uint32_t hint);
+
+#ifdef OMAP_ENHANCEMENT
+    //sets the layout for the buffers
+    status_t setLayout(uint32_t layout);
+#endif
 
 private:
     // freeBufferLocked frees the resources (both GraphicBuffer and EGLImage)
@@ -376,6 +406,17 @@ private:
 
         // Indicates whether this buffer needs to be cleaned up by consumer
         bool mNeedsCleanupOnRelease;
+
+#ifdef OMAP_ENHANCEMENT
+       // next layout for the buffers
+       uint32_t mLayout;
+#endif
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+        // mMetadata is a shared memory containing camera_metadata_t for this
+        // slot. Content of metadata may be different dependeing on usecase.
+        sp<IMemory> mMetadata;
+#endif
     };
 
     // mSlots is the array of buffer slots that must be mirrored on the client
@@ -469,6 +510,11 @@ private:
     // with the surface Texture.
     uint64_t mFrameCounter;
 
+#ifdef OMAP_ENHANCEMENT
+    // next layout for the buffers
+    uint32_t mNextLayout;
+#endif
+
     // mBufferHasBeenQueued is true once a buffer has been queued.  It is reset
     // by changing the buffer count.
     bool mBufferHasBeenQueued;
@@ -482,6 +528,19 @@ private:
 
     // mTransformHint is used to optimize for screen rotations
     uint32_t mTransformHint;
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+public:
+    // updateAndGetCurrent() updates to the current buffer and returns.
+    virtual status_t updateAndGetCurrent(sp<GraphicBuffer>* buf);
+
+    // addBufferSlot() adds the provided buffer to the buffer slots array.
+    virtual int addBufferSlot(const sp<GraphicBuffer>& buffer);
+
+    // getBuffer() allows consumer to get a BufferItem for particular
+    // slot without getting a reference to it.
+    status_t getBuffer(int slot, BufferItem *buffer);
+#endif
 };
 
 // ----------------------------------------------------------------------------

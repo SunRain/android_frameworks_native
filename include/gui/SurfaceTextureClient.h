@@ -28,6 +28,10 @@
 #include <utils/threads.h>
 #include <utils/KeyedVector.h>
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+#include <binder/MemoryBase.h>
+#endif
+
 struct ANativeWindow_Buffer;
 
 namespace android {
@@ -82,8 +86,20 @@ private:
     int dispatchSetCrop(va_list args);
     int dispatchSetPostTransformCrop(va_list args);
     int dispatchSetUsage(va_list args);
+#ifdef QCOM_HARDWARE
+    int dispatchSetBuffersSize(va_list args);
+#endif
     int dispatchLock(va_list args);
     int dispatchUnlockAndPost(va_list args);
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    int dispatchUpdateAndGetCurrent(va_list args);
+    int dispatchSetBuffersMetadata(va_list args);
+    int dispatchAddBufferSlot(va_list args);
+#endif
+
+#ifdef OMAP_ENHANCEMENT
+    int dispatchSetBuffersLayout(va_list args);
+#endif
 
 protected:
     virtual int cancelBuffer(ANativeWindowBuffer* buffer);
@@ -93,6 +109,9 @@ protected:
     virtual int query(int what, int* value) const;
     virtual int queueBuffer(ANativeWindowBuffer* buffer);
     virtual int setSwapInterval(int interval);
+#ifdef QCOM_HARDWARE
+    virtual int setBuffersSize(int size);
+#endif
 
     virtual int connect(int api);
     virtual int disconnect(int api);
@@ -107,6 +126,14 @@ protected:
     virtual int setUsage(uint32_t reqUsage);
     virtual int lock(ANativeWindow_Buffer* outBuffer, ARect* inOutDirtyBounds);
     virtual int unlockAndPost();
+#ifdef OMAP_ENHANCEMENT
+    virtual int setBuffersLayout(uint32_t layout);
+#endif
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    virtual int updateAndGetCurrent(ANativeWindowBuffer** buffer);
+    virtual int setBuffersMetadata(const sp<MemoryBase>& metadata);
+    virtual int addBufferSlot(const sp<GraphicBuffer>& buffer);
+#endif
 
     enum { NUM_BUFFER_SLOTS = BufferQueue::NUM_BUFFER_SLOTS };
     enum { DEFAULT_FORMAT = PIXEL_FORMAT_RGBA_8888 };
@@ -192,6 +219,10 @@ private:
     // one buffer behind the producer.
     mutable bool mConsumerRunningBehind;
 
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    // Metadata for the current texture
+    sp<MemoryBase> mMetadata;
+#endif
     // mMutex is the mutex used to prevent concurrent access to the member
     // variables of SurfaceTexture objects. It must be locked whenever the
     // member variables are accessed.
@@ -204,6 +235,21 @@ private:
 
     // must be accessed from lock/unlock thread only
     Region mDirtyRegion;
+
+    // mReqExtUsage is a flag set by app to mark a layer for display on
+    // external panels only. Depending on the value of this flag mReqUsage
+    // will be ORed with existing values.
+    // Possible values GRALLOC_USAGE_PRIVATE_EXTERNAL_ONLY,
+    // GRALLOC_USAGE_PRIVATE_EXTERNAL_BLOCK,
+    // GRALLOC_USAGE_PRIVATE_EXTERNAL_CC,
+    // It is initialized to 0
+    uint32_t mReqExtUsage;
+
+#ifdef OMAP_ENHANCEMENT_CPCAM
+    // mCurrentBuffer contains the current buffer from SurfaceTexture
+    // used in updateAndGetCurrent().
+    sp<GraphicBuffer> mCurrentBuffer;
+#endif
 };
 
 }; // namespace android

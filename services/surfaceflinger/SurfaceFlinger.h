@@ -102,6 +102,11 @@ public:
     virtual ~GraphicBufferAlloc();
     virtual sp<GraphicBuffer> createGraphicBuffer(uint32_t w, uint32_t h,
         PixelFormat format, uint32_t usage, status_t* error);
+#ifdef QCOM_HARDWARE
+    virtual void setGraphicBufferSize(int size);
+private:
+    int mBufferSize;
+#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -245,6 +250,10 @@ private:
     friend class LayerBase;
     friend class LayerBaseClient;
     friend class Layer;
+#ifdef OMAP_ENHANCEMENT_S3D
+    friend class S3DSurfaceFlinger;
+    friend class OmapLayer;
+#endif
 
     sp<ISurface> createSurface(
             ISurfaceComposerClient::surface_data_t* params,
@@ -253,7 +262,11 @@ private:
             DisplayID display, uint32_t w, uint32_t h, PixelFormat format,
             uint32_t flags);
 
+#ifdef OMAP_ENHANCEMENT_S3D
+    virtual sp<Layer> createNormalSurface(
+#else
     sp<Layer> createNormalSurface(
+#endif
             const sp<Client>& client, DisplayID display,
             uint32_t w, uint32_t h, uint32_t flags,
             PixelFormat& format);
@@ -262,7 +275,11 @@ private:
             const sp<Client>& client, DisplayID display,
             uint32_t w, uint32_t h, uint32_t flags);
 
+#ifdef OMAP_ENHANCEMENT_S3D
+    virtual sp<LayerScreenshot> createScreenshotSurface(
+#else
     sp<LayerScreenshot> createScreenshotSurface(
+#endif
             const sp<Client>& client, DisplayID display,
             uint32_t w, uint32_t h, uint32_t flags);
 
@@ -317,17 +334,28 @@ private:
                             const LayerVector& currentLayers,
                             Region& dirtyRegion,
                             Region& wormholeRegion);
-
+#ifdef OMAP_ENHANCEMENT_S3D
+            virtual void        handlePageFlip();
+#else
             void        handlePageFlip();
+#endif
             bool        lockPageFlip(const LayerVector& currentLayers);
             void        unlockPageFlip(const LayerVector& currentLayers);
             void        handleRefresh();
+#ifdef OMAP_ENHANCEMENT_S3D
+            virtual void        handleWorkList();
+#else
             void        handleWorkList();
+#endif
             void        handleRepaint();
             void        postFramebuffer();
             void        setupHardwareComposer();
+#ifdef OMAP_ENHANCEMENT_S3D
+            virtual void        composeSurfaces(const Region& dirty);
+#else
             void        composeSurfaces(const Region& dirty);
 
+#endif
 
             void        setInvalidateRegion(const Region& reg);
             Region      getAndClearInvalidateRegion();
@@ -343,8 +371,12 @@ private:
             uint32_t    setTransactionFlags(uint32_t flags);
             void        commitTransaction();
 
-
+#ifdef OMAP_ENHANCEMENT_S3D
+    virtual void     drawLayersForScreenshotLocked();
+    virtual status_t captureScreenImplLocked(DisplayID dpy,
+#else
             status_t captureScreenImplLocked(DisplayID dpy,
+#endif
                     sp<IMemoryHeap>* heap,
                     uint32_t* width, uint32_t* height, PixelFormat* format,
                     uint32_t reqWidth, uint32_t reqHeight,
@@ -358,6 +390,9 @@ private:
             void        debugFlashRegions();
             void        drawWormhole() const;
 
+#ifdef OMAP_ENHANCEMENT_S3D
+    virtual void modifyCoords(GLint& x, GLint& y, GLsizei& rw, GLsizei& rh) const {};
+#endif
             void        startBootAnim();
 
             void listLayersLocked(const Vector<String16>& args, size_t& index,
