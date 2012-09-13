@@ -29,7 +29,7 @@
 #include <gui/SurfaceTextureClient.h>
 
 #include <private/gui/ComposerService.h>
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
 #include <gralloc_priv.h>
 #endif
 
@@ -362,9 +362,6 @@ int SurfaceTextureClient::perform(int operation, va_list args)
     case NATIVE_WINDOW_SET_BUFFERS_SIZE:
         res = dispatchSetBuffersSize(args);
         break;
-    case NATIVE_WINDOW_SET_MIN_UNDEQUEUED_BUFFER_COUNT:
-        res = dispatchSetMinUndequeuedBufferCount(args);
-        break;
 #endif
     case NATIVE_WINDOW_LOCK:
         res = dispatchLock(args);
@@ -458,11 +455,6 @@ int SurfaceTextureClient::dispatchSetBuffersFormat(va_list args) {
 int SurfaceTextureClient::dispatchSetBuffersSize(va_list args) {
     int size = va_arg(args, int);
     return setBuffersSize(size);
-}
-
-int SurfaceTextureClient::dispatchSetMinUndequeuedBufferCount(va_list args) {
-    int count = va_arg(args, int);
-    return setMinUndequeuedBufferCount(count);
 }
 #endif
 
@@ -561,7 +553,7 @@ int SurfaceTextureClient::setUsage(uint32_t reqUsage)
     ALOGV("SurfaceTextureClient::setUsage");
     Mutex::Autolock lock(mMutex);
 
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
     if (reqUsage & GRALLOC_USAGE_PRIVATE_EXTERNAL_ONLY) {
         //Set explicitly, since reqUsage may have other values.
         mReqExtUsage = GRALLOC_USAGE_PRIVATE_EXTERNAL_ONLY;
@@ -677,19 +669,6 @@ int SurfaceTextureClient::setBuffersSize(int size)
 
     Mutex::Autolock lock(mMutex);
     status_t err = mSurfaceTexture->setBuffersSize(size);
-    return NO_ERROR;
-}
-
-int SurfaceTextureClient::setMinUndequeuedBufferCount(int count)
-{
-    ATRACE_CALL();
-    ALOGV("SurfaceTextureClient::setMinUndequeuedBufferCount");
-
-    if (count<0)
-        return BAD_VALUE;
-
-    Mutex::Autolock lock(mMutex);
-    status_t err = mSurfaceTexture->setMinUndequeuedBufferCount(count);
     return NO_ERROR;
 }
 #endif
@@ -846,12 +825,12 @@ status_t SurfaceTextureClient::lock(
                     backBuffer->height == frontBuffer->height &&
                     backBuffer->format == frontBuffer->format);
 
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
             int backBufferSlot(getSlotFromBufferLocked(backBuffer.get()));
 #endif
             if (canCopyBack) {
                 // copy the area that is invalid and not repainted this round
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
                 Mutex::Autolock lock(mMutex);
                 Region oldDirtyRegion;
                 for(int i = 0 ; i < NUM_BUFFER_SLOTS; i++ ) {
@@ -868,7 +847,7 @@ status_t SurfaceTextureClient::lock(
                 // if we can't copy-back anything, modify the user's dirty
                 // region to make sure they redraw the whole buffer
                 newDirtyRegion.set(bounds);
-#ifndef QCOMHW
+#ifndef QCOM_HARDWARE
                 mDirtyRegion.clear();
 #endif
                 Mutex::Autolock lock(mMutex);
@@ -880,7 +859,7 @@ status_t SurfaceTextureClient::lock(
 
             { // scope for the lock
                 Mutex::Autolock lock(mMutex);
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
                 mSlots[backBufferSlot].dirtyRegion = newDirtyRegion;
 #else
                 int backBufferSlot(getSlotFromBufferLocked(backBuffer.get()));
@@ -892,7 +871,7 @@ status_t SurfaceTextureClient::lock(
 #endif
             }
 
-#ifndef QCOMHW
+#ifndef QCOM_HARDWARE
            mDirtyRegion.orSelf(newDirtyRegion);
 #endif
 

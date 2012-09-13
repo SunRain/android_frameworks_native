@@ -43,7 +43,7 @@
 #include "SurfaceFlinger.h"
 #include "SurfaceTextureLayer.h"
 
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
 #include <gpuformats.h>
 #endif
 
@@ -298,6 +298,9 @@ void Layer::setGeometry(hwc_layer_t* hwcl)
      */
 
     const Transform bufferOrientation(mCurrentTransform);
+#ifdef QCOM_HARDWARE
+    hwcl->sourceTransform = bufferOrientation.getOrientation();
+#endif
     const Transform tr(mTransform * bufferOrientation);
 
     // this gives us only the "orientation" component of the transform
@@ -364,7 +367,7 @@ void Layer::onDraw(const Region& clip) const
         }
         return;
     }
-#ifdef QCOMHW
+#ifdef QCOM_HARDWARE
     if (!qdutils::isGPUSupportedFormat(mActiveBuffer->format)) {
         clearWithOpenGL(clip, 0, 0, 0, 1);
         return;
